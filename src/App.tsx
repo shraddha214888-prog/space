@@ -58,6 +58,7 @@ export default function App() {
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [lastBroadcast, setLastBroadcast] = useState<{ text: string; timestamp: number } | null>(null);
 
   const t = translations[lang];
 
@@ -267,8 +268,9 @@ export default function App() {
       unit: ambulance.unitCode,
       message: `Emergency Voice Broadcast: "${msg}"`,
     };
+    setLastBroadcast({ text: msg, timestamp: Date.now() });
     setLogs((prev) => [newLog, ...prev.slice(0, 19)]);
-    showToast('Broadcast transmitted to all connected motorists.');
+    showToast(lang === 'gu' ? 'તમામ વાહનોને લાઇવ વોઇસ ઘોષણા પ્રસારિત કરવામાં આવી.' : 'PA Voice Broadcast transmitted to all connected motorists.');
   };
 
   const handleForcePreemption = (signalId: string) => {
@@ -509,6 +511,7 @@ export default function App() {
                 userCar={userVehicle}
                 ambulance={ambulance}
                 lang={lang}
+                activeBroadcast={lastBroadcast}
                 onYield={handleUserYield}
                 onReportObstruction={handleReportObstruction}
               />
@@ -547,6 +550,7 @@ export default function App() {
                   userCar={userVehicle}
                   ambulance={ambulance}
                   lang={lang}
+                  activeBroadcast={lastBroadcast}
                   onYield={handleUserYield}
                   onReportObstruction={handleReportObstruction}
                 />
@@ -565,6 +569,7 @@ export default function App() {
                   motorists={motorists}
                   signals={signals}
                   logs={logs}
+                  lang={lang}
                   onToggleSiren={handleToggleSiren}
                   onChangeSirenMode={handleChangeSirenMode}
                   onChangeRadius={handleChangeRadius}
@@ -583,6 +588,7 @@ export default function App() {
               userCar={userVehicle}
               ambulance={ambulance}
               lang={lang}
+              activeBroadcast={lastBroadcast}
               onYield={handleUserYield}
               onReportObstruction={handleReportObstruction}
             />
@@ -597,6 +603,7 @@ export default function App() {
               motorists={motorists}
               signals={signals}
               logs={logs}
+              lang={lang}
               onToggleSiren={handleToggleSiren}
               onChangeSirenMode={handleChangeSirenMode}
               onChangeRadius={handleChangeRadius}
@@ -614,6 +621,7 @@ export default function App() {
               motorists={motorists}
               signals={signals}
               logs={logs}
+              lang={lang}
               onTriggerScenario={handleTriggerScenario}
               onClearLogs={() => setLogs([])}
             />
@@ -635,7 +643,11 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-slate-900 py-6 px-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>AuraPulse V2X Emergency Vehicle Pre-Alert Network · Certified ISO-V2X Protocol</span>
+          <span>
+            {lang === 'gu' 
+              ? 'જીવનદાન (Jivandan) V2X ઇમરજન્સી વ્હીકલ પ્રી-એલર્ટ નેટવર્ક · પ્રમાણિત C-V2X પ્રોટોકોલ' 
+              : 'Jivandan V2X Emergency Vehicle Pre-Alert Network · Certified ISO-V2X Protocol'}
+          </span>
           <div className="flex items-center gap-4 text-slate-400">
             <span>5.9 GHz DSRC / C-V2X Standard</span>
             <span aria-hidden="true">·</span>

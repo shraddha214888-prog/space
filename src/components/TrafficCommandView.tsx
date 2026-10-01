@@ -1,5 +1,6 @@
 import React from 'react';
 import { EmergencyVehicle, MotoristVehicle, TrafficSignal, CorridorAlertLog } from '../types/emergency';
+import { Language } from '../locales/translations';
 import { 
   Building2, 
   Activity, 
@@ -20,6 +21,7 @@ interface TrafficCommandViewProps {
   motorists: MotoristVehicle[];
   signals: TrafficSignal[];
   logs: CorridorAlertLog[];
+  lang?: Language;
   onTriggerScenario: (scenario: 'rush_hour' | 'highway_express' | 'dense_intersection') => void;
   onClearLogs: () => void;
 }
@@ -29,6 +31,7 @@ export const TrafficCommandView: React.FC<TrafficCommandViewProps> = ({
   motorists,
   signals,
   logs,
+  lang = 'en',
   onTriggerScenario,
   onClearLogs,
 }) => {

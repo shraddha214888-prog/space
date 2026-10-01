@@ -100,8 +100,8 @@ export interface Translations {
 
 export const translations: Record<Language, Translations> = {
   en: {
-    appName: "AuraPulse Corridor",
-    tagline: "Instant Pre-Alert of Approaching Ambulances for Motorists",
+    appName: "Jivandan Corridor",
+    tagline: "Jivandan: Instant Pre-Alert of Approaching Ambulances for Motorists",
     subTagline: "Notifying nearby drivers 750 meters ahead to safely yield lanes before sirens can even be heard, creating an open emergency rescue alley and preventing sudden panic maneuvers.",
     tabs: {
       simulator: "Live Simulator",
@@ -197,8 +197,8 @@ export const translations: Record<Language, Translations> = {
     },
   },
   gu: {
-    appName: "ઓરાપલ્સ ઇમરજન્સી કોરિડોર",
-    tagline: "વાહનચાલકો માટે એમ્બ્યુલન્સનું રિયલ-ટાઇમ પ્રી-એલર્ટ (અગાઉથી ચેતવણી)",
+    appName: "જીવનદાન ઇમરજન્સી કોરિડોર",
+    tagline: "જીવનદાન: વાહનચાલકો માટે એમ્બ્યુલન્સનું રિયલ-ટાઇમ પ્રી-એલર્ટ (અગાઉથી ચેતવણી)",
     subTagline: "સાયરન સંભળાય તે પહેલાં જ 750 મીટર આગળ રહેલા વાહનચાલકોને ડિજિટલ ચેતવણી આપી સલામત રીતે જમણી બાજુ ખસી જવા સૂચના, જેથી દર્દી માટે ગોલ્ડન અવરમાં જીવનરક્ષક માર્ગ ખુલ્લો થઈ શકે.",
     tabs: {
       simulator: "લાઈવ સિમ્યુલેટર",

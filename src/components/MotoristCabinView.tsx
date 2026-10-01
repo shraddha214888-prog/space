@@ -22,6 +22,7 @@ interface MotoristCabinViewProps {
   userCar: MotoristVehicle;
   ambulance: EmergencyVehicle;
   lang?: Language;
+  activeBroadcast?: { text: string; timestamp: number } | null;
   onYield: () => void;
   onReportObstruction: () => void;
 }
@@ -30,6 +31,7 @@ export const MotoristCabinView: React.FC<MotoristCabinViewProps> = ({
   userCar,
   ambulance,
   lang = 'en',
+  activeBroadcast,
   onYield,
   onReportObstruction,
 }) => {
@@ -135,6 +137,29 @@ export const MotoristCabinView: React.FC<MotoristCabinViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Live PA Vocal Broadcast Received from Approaching Emergency Unit */}
+      {activeBroadcast && (Date.now() - activeBroadcast.timestamp < 18000) && (
+        <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-rose-950 border-2 border-rose-500 rounded-xl shadow-lg shadow-rose-950/60 animate-pulse">
+          <div className="p-2.5 rounded-lg bg-rose-600 text-white shrink-0 shadow-md">
+            <Volume2 className="w-5 h-5 animate-bounce" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-300">
+                {lang === 'gu' ? 'ઇમરજન્સી એમ્બ્યુલન્સ વોઇસ બ્રોડકાસ્ટ (PA)' : 'EMERGENCY AMBULANCE PA VOCAL BROADCAST'}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+              <span className="text-[10px] font-mono text-slate-400">
+                {ambulance.unitCode}
+              </span>
+            </div>
+            <p className="text-sm font-bold text-white mt-0.5 tracking-wide leading-tight">
+              "{activeBroadcast.text}"
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main Alert Warning Banner */}
       <div

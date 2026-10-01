@@ -7,9 +7,34 @@ class AudioAlertService {
   private voiceEnabled: boolean = true;
   private lastSpokenDistance: number = 0;
   private lastSpokenTime: number = 0;
+  private cachedVoices: SpeechSynthesisVoice[] = [];
 
   constructor() {
-    // AudioContext will be initialized on first user gesture
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.loadVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          this.loadVoices();
+        };
+      }
+    }
+  }
+
+  private loadVoices() {
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        this.cachedVoices = window.speechSynthesis.getVoices();
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  public getAvailableVoices(): SpeechSynthesisVoice[] {
+    if (this.cachedVoices.length === 0 && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.loadVoices();
+    }
+    return this.cachedVoices;
   }
 
   private initContext() {
@@ -119,11 +144,22 @@ class AudioAlertService {
     utterance.pitch = 1.05;
     utterance.volume = 0.85;
 
-    // Pick crisp English voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const enVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha')));
-    if (enVoice) {
-      utterance.voice = enVoice;
+    // Pick appropriate voice
+    const voices = this.getAvailableVoices();
+    const isGujarati = /[\u0A80-\u0AFF]/.test(text);
+
+    if (isGujarati) {
+      utterance.lang = 'gu-IN';
+      const guVoice = voices.find(
+        v => v.lang.startsWith('gu') || v.lang === 'gu-IN' || v.lang.includes('IN')
+      );
+      if (guVoice) utterance.voice = guVoice;
+    } else {
+      utterance.lang = 'en-US';
+      const enVoice = voices.find(
+        v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Alex'))
+      );
+      if (enVoice) utterance.voice = enVoice;
     }
 
     window.speechSynthesis.speak(utterance);
@@ -191,6 +227,159 @@ class AudioAlertService {
     } catch {
       // AudioContext fallback
     }
+  }
+
+  /**
+   * Realistic radio microphone keying and unkeying squelch chirp
+   */
+  public playMicClick(isKeying: boolean = true) {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.audioCtx) return;
+
+      const now = this.audioCtx.currentTime;
+
+      if (isKeying) {
+        // High frequency squelch burst (like Motorola/Whelen radio mic key)
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1450, now);
+        osc.frequency.exponentialRampToValueAtTime(2100, now + 0.04);
+        osc.frequency.setValueAtTime(1200, now + 0.05);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+        // Bandpass filter to create radio resonance
+        const filter = this.audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1800, now);
+        filter.Q.setValueAtTime(3, now);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      } else {
+        // Release squelch tail click
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.06);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+    } catch {
+      // AudioContext fallback
+    }
+  }
+
+  /**
+   * Emergency Vehicle Public Address (PA) speech synthesis using Web Speech API
+   * Immediately speaks custom broadcast message aloud, mimicking a vehicular PA system.
+   */
+  public broadcastPA(
+    text: string,
+    lang: 'en' | 'gu' = 'en',
+    onStart?: () => void,
+    onEnd?: () => void,
+    options?: { rate?: number; pitch?: number; volume?: number; voiceURI?: string }
+  ) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    // Play mic keying chirp
+    this.playMicClick(true);
+
+    // Cancel any pending speech queue so the PA announcement takes immediate priority
+    window.speechSynthesis.cancel();
+
+    let hasEnded = false;
+    const finishCallback = () => {
+      if (hasEnded) return;
+      hasEnded = true;
+      this.playMicClick(false); // Squelch release click
+      if (onEnd) onEnd();
+    };
+
+    // Short timeout to allow the mic squelch chirp to lead the speech
+    setTimeout(() => {
+      try {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = options?.rate ?? 0.98; // Authoritative, deliberate PA pace
+        utterance.pitch = options?.pitch ?? 1.02;
+        utterance.volume = options?.volume ?? 1.0;
+
+        // Select matching voice
+        const voices = this.getAvailableVoices();
+        const isGujaratiText = /[\u0A80-\u0AFF]/.test(text) || lang === 'gu';
+
+        if (options?.voiceURI) {
+          const chosen = voices.find(v => v.voiceURI === options.voiceURI);
+          if (chosen) utterance.voice = chosen;
+        } else if (isGujaratiText) {
+          utterance.lang = 'gu-IN';
+          // Attempt to find Gujarati or Indian localized voice
+          const guVoice = voices.find(
+            v => v.lang.startsWith('gu') || v.lang === 'gu-IN' || v.lang.includes('IN')
+          );
+          if (guVoice) utterance.voice = guVoice;
+        } else {
+          utterance.lang = 'en-US';
+          // Crisp authoritative English voice
+          const enVoice = voices.find(
+            v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Alex') || v.name.includes('Daniel') || v.name.includes('Samantha'))
+          );
+          if (enVoice) utterance.voice = enVoice;
+        }
+
+        utterance.onstart = () => {
+          if (onStart) onStart();
+        };
+
+        utterance.onend = () => {
+          finishCallback();
+        };
+
+        utterance.onerror = () => {
+          finishCallback();
+        };
+
+        // Safety fallback timer in case browser stalls
+        const estimatedDurationMs = Math.max(3000, Math.ceil((text.length / 10) * 1200));
+        setTimeout(() => {
+          if (!hasEnded && !window.speechSynthesis.speaking) {
+            finishCallback();
+          }
+        }, estimatedDurationMs + 1500);
+
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        finishCallback();
+      }
+    }, 90);
+  }
+
+  public cancelBroadcast(onEnd?: () => void) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      this.playMicClick(false);
+    }
+    if (onEnd) onEnd();
   }
 
   public stopSiren() {
